@@ -2,3 +2,8 @@ streamlit
 requests
 pandas
 plotly
+gtts
+PyPDF2
+python-docx
+textstat
+textblob
