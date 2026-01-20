@@ -143,28 +143,38 @@ def execute_transformation(text, tone, platform, emoji_level, length, vibe, targ
         kw_instruction = f"MANDATORY: You must naturally include these exact keywords: {target_keywords}."
 
     messages = [
-        {"role": "system", "content": f"You are Resonate AI. Task: {tone_map.get(tone)}. {platform_map.get(platform)}. {emoji_instr} {vibe_instr} {kw_instruction} Length: {length}. Output ONLY the transformed text in {target_lang}. IMPORTANT: At the very end, add a single line with ONLY 5 comma-separated numbers (0-100) and NO text, representing (Clarity, Energy, Professionalism, Creativity, Emotion)."},
+        {"role": "system", "content": f"You are Resonate AI. Task: {tone_map.get(tone)}. {platform_map.get(platform)}. {emoji_instr} {vibe_instr} {kw_instruction} Length: {length}. Output ONLY the transformed text in {target_lang}. IMPORTANT: On a new line at the very end, add exactly this: [SCORES] followed by 5 comma-separated numbers (0-100) representing (Clarity, Energy, Professionalism, Creativity, Emotion). Example: [SCORES] 85,70,90,65,80"},
         {"role": "user", "content": f"Text: \"{text}\""}
     ]
+
 
     output = query_ai(messages)
     try:
         if "choices" in output:
             full_res = output["choices"][0]["message"]["content"].strip()
             
-            # Robust extraction of scores using Regex
-            # Matches 5 numbers separated by commas, optionally including labels like "Clarity: 80"
-            score_match = re.search(r'((?:\w+:\s*)?\d{1,3}(?:,\s*)?){5}', full_res)
+            # More robust extraction using unique delimiter
+            if "[SCORES]" in full_res:
+                parts = full_res.split("[SCORES]")
+                text_part = parts[0].strip()
+                score_str = parts[1].strip()
+                
+                # Extract digits from the score string
+                scores = re.findall(r'\d+', score_str)
+                if len(scores) >= 5:
+                    data_part = ",".join(scores[:5])
+                    return text_part, data_part
             
+            # Fallback regex search if delimiter is missing but scores are present
+            score_match = re.search(r'(\d{1,3}(?:,\s*)?){5}', full_res)
             if score_match:
                 matched_str = score_match.group(0)
-                # Extract only the digits and join them with commas for the data part
                 scores = re.findall(r'\d+', matched_str)
                 if len(scores) >= 5:
                     data_part = ",".join(scores[:5])
-                    # Remove the entire matched metrics block from the visible text
-                    text_part = full_res.replace(matched_str, "").strip()
+                    text_part = full_res.replace(matched_str, "").replace("[SCORES]", "").strip()
                     return text_part, data_part
+
 
             return full_res, "50,50,50,50,50"
         return f"⚠️ {output.get('error')}", "0,0,0,0,0"
