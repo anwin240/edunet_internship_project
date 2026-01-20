@@ -8,7 +8,7 @@ from gtts import gTTS
 import base64
 import io
 import difflib
-import PyPDF2
+
 from docx import Document
 import re
 
@@ -21,20 +21,12 @@ except ImportError:
 
 
 # --- CONFIGURATION ---
-try:
-    API_TOKEN = st.secrets["HUGGING_FACE_API_KEY"]
-except Exception:
-    API_TOKEN = "YOUR_HUGGING_FACE_API_KEY_HERE"
-
-# Unified Model
+API_TOKEN = st.secrets["HUGGING_FACE_API_KEY"]
 TEXT_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct"
 headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
 # --- AI LOGIC ---
 def query_ai(messages):
-    if API_TOKEN == "YOUR_HUGGING_FACE_API_KEY_HERE":
-        return {"error": "API Key is missing! Please add it to .streamlit/secrets.toml"}
-    
     ROUTER_URL = "https://router.huggingface.co/v1/chat/completions"
     payload = {
         "model": TEXT_MODEL,
@@ -42,7 +34,6 @@ def query_ai(messages):
         "max_tokens": 1000,
         "temperature": 0.7
     }
-    
     try:
         response = requests.post(ROUTER_URL, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
@@ -52,9 +43,6 @@ def query_ai(messages):
         return {"error": str(e)}
 
 def query_audio(text):
-    if API_TOKEN == "YOUR_HUGGING_FACE_API_KEY_HERE":
-        return None
-    
     # Neural TTS Model (Much more natural than gTTS)
     API_URL = "https://api-inference.huggingface.co/models/facebook/mms-tts-eng"
     try:
@@ -66,16 +54,11 @@ def query_audio(text):
         return None
 
 def read_file(uploaded_file):
-    if uploaded_file.name.endswith('.pdf'):
-        reader = PyPDF2.PdfReader(uploaded_file)
-        return " ".join([page.extract_text() for page in reader.pages if page.extract_text()])
-    elif uploaded_file.name.endswith('.docx'):
+    if uploaded_file.name.endswith('.docx'):
         doc = Document(uploaded_file)
         return "\n".join([para.text for para in doc.paragraphs])
     else: # Plain text
         return str(uploaded_file.read(), "utf-8")
-
-
 
 def render_social_preview(text, platform):
     if platform == "X (Twitter) 🐦":
@@ -122,9 +105,6 @@ def render_social_preview(text, platform):
         st.info(f"Visual preview not available for {platform} yet. Switch to 'Final Result' to see your text.")
 
 def execute_transformation(text, tone, platform, emoji_level, length, vibe, target_lang, custom_prompt, target_keywords):
-
-
-
     tone_map = {
         "Professional 👔": "Rewrite to be corporate-ready and sophisticated.",
         "Grammar Medic 🩹": "Correct grammar, spelling, and flow only.",
@@ -167,8 +147,6 @@ def execute_transformation(text, tone, platform, emoji_level, length, vibe, targ
         {"role": "user", "content": f"Text: \"{text}\""}
     ]
 
-
-
     output = query_ai(messages)
     try:
         if "choices" in output:
@@ -188,12 +166,10 @@ def execute_transformation(text, tone, platform, emoji_level, length, vibe, targ
                     text_part = full_res.replace(matched_str, "").strip()
                     return text_part, data_part
 
-            
             return full_res, "50,50,50,50,50"
         return f"⚠️ {output.get('error')}", "0,0,0,0,0"
     except Exception as e:
         return f"❌ Transformation Failed: {str(e)}", "0,0,0,0,0"
-
 
 # --- UI SETUP ---
 st.set_page_config(page_title="Resonate AI", page_icon="🦋", layout="wide")
@@ -259,8 +235,6 @@ with st.sidebar:
                 st.session_state['out'] = item['transformed']
                 st.session_state['data'] = item['metrics']
                 st.rerun()
-
-
     
     st.divider()
     st.header("🛠️ Manual Overrides")
@@ -271,8 +245,6 @@ with st.sidebar:
     target_keywords = st.text_input("Target Keywords (comma separated)", placeholder="e.g. AI, growth, synergy")
 
 col1, col2 = st.columns([1.5, 1])
-
-
 
 with col1:
     # Toggle between Text Input and File Upload
@@ -291,9 +263,6 @@ with col1:
             st.info("Waiting for file...")
     else:
         u_text = st.text_area("Input Content:", height=450, placeholder=input_text_placeholder, label_visibility="collapsed")
-
-
-
 
 with col2:
     st.subheader("⚙️ Refinement Suite")
@@ -317,17 +286,13 @@ with col2:
     with st.expander("Step 6: Insights Architect 📊", expanded=False):
         show_stats = st.checkbox("Show Linguistic Analysis (Charts)", value=True)
 
-
     st.divider()
     if st.button("🚀 EXECUTE FULL TRANSFORMATION", use_container_width=True):
         if u_text:
             with st.spinner("Analyzing resonance..."):
                 res, data = execute_transformation(u_text, t, p, e, l, v, target_lang, custom_prompt, target_keywords)
-
-
-
-
                 st.session_state['out'] = res
+
                 st.session_state['data'] = data
                 # Append to history
                 st.session_state['history'].append({
@@ -341,7 +306,6 @@ with col2:
 
         else:
             st.warning("Input required to resonate.")
-
 
 if st.session_state['out']:
     st.divider()
@@ -381,7 +345,6 @@ if st.session_state['out']:
     else:
         tab1, tab2, tab3 = tabs
         tab_v = None
-
 
     with tab1:
         st.markdown(f'<div class="output-container">{st.session_state["out"]}</div>', unsafe_allow_html=True)
@@ -444,7 +407,6 @@ if st.session_state['out']:
             st.subheader("👀 Real-World Social Preview")
             render_social_preview(st.session_state['out'], p)
 
-
     with tab2:
         col_a, col_b = st.columns(2)
         # Find original text for comparison
@@ -462,9 +424,7 @@ if st.session_state['out']:
             st.caption("Resonated")
             st.success(st.session_state['out'])
 
-
     with tab3:
-
         # On-demand Voice Synthesis moved here to keep page short
         if st.button("🔊 Generate Audio"):
             try:
@@ -541,6 +501,3 @@ if st.session_state['out']:
                     st.metric("Word Count", word_count, f"Est: {word_count/200:.1f} min speech")
         except:
             st.warning("Deep metrics loading...")
-
-
-
